@@ -127,11 +127,47 @@ def optimal_weights(cov, er, n_points):
     weights = [minimize_vol(r, cov, er) for r in t_r]
     return weights
 
-def plot_ef(cov, er, n_points):
+def plot_ef(cov, er, n_points, cml=False, rfr=0):
+    
     weights = optimal_weights(cov, er, n_points)
     r = [portfolio_return(w, er) for w in weights]
     v = [portfolio_volatility(w, cov) for w in weights]
     ef = pd.DataFrame({'Return':r, 'Volatility':v})
-    return ef.plot.line(x='Volatility', y='Return', style='.-')
+    ax = ef.plot.line(x='Volatility', y='Return', style='.-')
+    
+    if cml:
+        ax.set_xlim(left=0)
+        w_msr = msr(rfr, cov, er)
+        vol_msr = portfolio_volatility(w_msr, cov)
+        r_msr = portfolio_return(w_msr, er)
+        x_vals = [0, vol_msr]
+        y_vals =[rfr, r_msr]
+        ax.plot(x_vals, y_vals, color='green', linestyle='--', linewidth=2, marker='o', markersize=12)
+    
+    return ax
+    
+def msr(rfr, cov, er):
+    n = cov.shape[0]
+    bounds = ((0.0,1.0),)*n
+    init_weights = np.repeat(1/n, n)
+    w_to_1 = {
+        'type': 'eq',
+        'fun': lambda weights: np.sum(weights) - 1
+    }
+    
+    def negative_sharpe_ratio(weights, rfr, cov, er):
+        r = portfolio_return(weights, er)
+        vol = portfolio_volatility(weights, cov)
+        return -(r-rfr)/vol
+    
+    weights = minimize(negative_sharpe_ratio, 
+                   init_weights, args=(rfr, cov, er,), 
+                   method='SLSQP', 
+                   options={'disp':False}, 
+                   bounds=bounds, 
+                   constraints=(w_to_1)
+                   )
+    
+    return weights.x
     
     
