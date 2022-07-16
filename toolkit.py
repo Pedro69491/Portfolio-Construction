@@ -127,7 +127,10 @@ def optimal_weights(cov, er, n_points):
     weights = [minimize_vol(r, cov, er) for r in t_r]
     return weights
 
-def plot_ef(cov, er, n_points, cml=False, rfr=0):
+def gmv(rfr, cov):
+    return msr(rfr, cov, np.repeat(1, cov.shape[0]))
+
+def plot_ef(cov, er, n_points, cml=False, rfr=0, show_ew=False, show_gmv=False):
     
     weights = optimal_weights(cov, er, n_points)
     r = [portfolio_return(w, er) for w in weights]
@@ -135,6 +138,19 @@ def plot_ef(cov, er, n_points, cml=False, rfr=0):
     ef = pd.DataFrame({'Return':r, 'Volatility':v})
     ax = ef.plot.line(x='Volatility', y='Return', style='.-')
     
+    if show_ew:
+        n_assets = cov.shape[0]
+        eq_weights = np.repeat(1/n_assets, n_assets)
+        r = portfolio_return(eq_weights, er)
+        vol = portfolio_volatility(eq_weights, cov)
+        ax.plot(vol, r, color='yellow', marker='o', markersize=12)
+    
+    if show_gmv:
+        w = gmv(rfr, cov)
+        r=portfolio_return(w, er)
+        vol=portfolio_volatility(w, cov)
+        ax.plot(vol, r, color='blue', marker='o', markersize=10)
+            
     if cml:
         ax.set_xlim(left=0)
         w_msr = msr(rfr, cov, er)
